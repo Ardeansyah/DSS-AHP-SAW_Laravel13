@@ -43,7 +43,6 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // Hitung & simpan bobot awal AHP ke tabel kriterias
         app(SpkAhpSawService::class)->hitungAhp(true);
 
         // 3. Contoh Import Data Siswa Terverifikasi (C3 & C4 dari data asli, C1/C2/C5 diisi lewat menu Penilaian)
