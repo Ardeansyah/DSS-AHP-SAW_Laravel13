@@ -1,88 +1,84 @@
-@extends('layouts.app')
+@extends('layouts.skote')
+@section('title', 'Milestone 04: Normalisasi & Perhitungan SAW')
+
 @section('content')
-<h3 class="fw-bold mb-3">5. Tahapan Perhitungan & Hasil Perangkingan SAW</h3>
+@php
+    $kriterias = \App\Models\Kriteria::orderBy('id')->get();
+    $alternatifs = \App\Models\Alternatif::with('penilaians')->orderBy('id')->get();
 
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white fw-bold">Tahap 1: Matriks Keputusan Awal (X)</div>
-    <div class="card-body table-responsive">
-        <table class="table table-bordered table-sm text-center align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Kode</th><th class="text-start">Nama Siswa</th>
-                    @foreach($saw['kriterias'] as $k) <th>{{ $k->kode }} ({{ $k->atribut }})</th> @endforeach
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($saw['alternatifs'] as $alt)
-                <tr>
-                    <td>{{ $alt->kode }}</td><td class="text-start">{{ $alt->nama }}</td>
-                    @foreach($saw['kriterias'] as $k)
-                        <td>{{ number_format($saw['matriks_x'][$alt->id][$k->id], 2) }}</td>
-                    @endforeach
-                </tr>
-                @endforeach
-                <tr class="table-warning fw-bold">
-                    <td colspan="2" class="text-end">Nilai Max / Min Kriteria</td>
-                    @foreach($saw['kriterias'] as $k)
-                        <td>{{ number_format($k->atribut === 'benefit' ? $saw['max_kriteria'][$k->id] : $saw['min_kriteria'][$k->id], 2) }}</td>
-                    @endforeach
-                </tr>
-            </tbody>
-        </table>
+    // Hitung pembagi Max/Min tiap kriteria untuk transparansi tahap SAW
+    $pembagi = [];
+    foreach ($kriterias as $k) {
+        $vals = $alternatifs->map(fn($a) => (float) ($a->penilaians->firstWhere('kriteria_id', $k->id)->nilai ?? 0));
+        $pembagi[$k->id] = $k->atribut === 'benefit' ? max($vals->max(), 0.0001) : max($vals->min(), 0.0001);
+    }
+@endphp
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="card-title mb-0">Tahapan Perhitungan Simple Additive Weighting (SAW)</h5>
+            <small class="text-muted">Penelusuran Matriks Keputusan ($X$), Matriks Normalisasi ($R_{ij} = x_{ij} / \max x_{ij}$), dan Nilai Preferensi ($V_i = \sum w_j r_{ij}$)</small>
+        </div>
+        <form action="{{ route('spk.perhitungan.finalisasi') }}" method="POST">
+            @csrf
+            <button type="submit" class="btn btn-primary px-4">
+                <i class="bx bx-check-double me-1"></i> Finalisasi Perhitungan &amp; Buka Milestone 05
+            </button>
+        </form>
     </div>
-</div>
-
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-white fw-bold">Tahap 2: Matriks Ternormalisasi (R)</div>
-    <div class="card-body table-responsive">
-        <table class="table table-bordered table-sm text-center align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Kode</th><th class="text-start">Nama Siswa</th>
-                    @foreach($saw['kriterias'] as $k) <th>{{ $k->kode }}</th> @endforeach
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($saw['alternatifs'] as $alt)
-                <tr>
-                    <td>{{ $alt->kode }}</td><td class="text-start">{{ $alt->nama }}</td>
-                    @foreach($saw['kriterias'] as $k)
-                        <td>{{ number_format($saw['matriks_r'][$alt->id][$k->id], 4) }}</td>
-                    @endforeach
-                </tr>
+    <div class="card-body">
+        <div class="alert border" style="background: var(--spk-canvas);">
+            <strong>Nilai Pembagi Maksimum ($\max X_j$) Tiap Kriteria Benefit:</strong>
+            <div class="d-flex flex-wrap gap-4 mt-2 small">
+                @foreach($kriterias as $k)
+                    <div>
+                        <span class="badge bg-dark">{{ $k->kode }}</span>
+                        Max = <strong>{{ number_format($pembagi[$k->id], 2) }}</strong> |
+                        Bobot ($w$) = <strong>{{ number_format($k->bobot, 4) }}</strong>
+                    </div>
                 @endforeach
-            </tbody>
-        </table>
-    </div>
-</div>
+            </div>
+        </div>
 
-<div class="card border-0 shadow-sm">
-    <div class="card-header bg-white fw-bold">Tahap 3: Matriks Terbobot (W x R) & Peringkat Akhir (V)</div>
-    <div class="card-body table-responsive">
-        <table class="table table-bordered table-sm text-center align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Peringkat</th><th>Kode</th><th class="text-start">Nama Siswa</th><th>Kelas</th>
-                    @foreach($saw['kriterias'] as $k) <th>{{ $k->kode }} (W={{ number_format($saw['bobot_aktif'][$k->id], 3) }})</th> @endforeach
-                    <th class="bg-primary text-white">Nilai Preferensi (V)</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($saw['peringkat'] as $row)
-                @php $alt = $row['alternatif']; @endphp
-                <tr>
-                    <td class="fw-bold">#{{ $row['peringkat'] }}</td>
-                    <td>{{ $alt->kode }}</td>
-                    <td class="text-start">{{ $alt->nama }}</td>
-                    <td>{{ $alt->kelas }}</td>
-                    @foreach($saw['kriterias'] as $k)
-                        <td>{{ number_format($saw['matriks_terbobot'][$alt->id][$k->id], 4) }}</td>
+        <div class="table-responsive" style="max-height: 560px;">
+            <table class="table table-bordered table-sm align-middle">
+                <thead class="sticky-top">
+                    <tr>
+                        <th rowspan="2">Kode</th>
+                        <th rowspan="2">Nama Siswa</th>
+                        <th colspan="{{ $kriterias->count() }}" class="text-center">Matriks Normalisasi ($R_{ij}$)</th>
+                        <th rowspan="2" class="text-end">Skor Preferensi ($V_i$)</th>
+                    </tr>
+                    <tr>
+                        @foreach($kriterias as $k)
+                            <th class="text-center">{{ $k->kode }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($alternatifs as $alt)
+                        @php
+                            $pMap = $alt->penilaians->keyBy('kriteria_id');
+                            $totalV = 0;
+                        @endphp
+                        <tr>
+                            <td class="fw-bold">{{ $alt->kode }}</td>
+                            <td>{{ $alt->nama }}</td>
+                            @foreach($kriterias as $k)
+                                @php
+                                    $x = (float) ($pMap[$k->id]->nilai ?? 0);
+                                    $r = $k->atribut === 'benefit' ? ($x / $pembagi[$k->id]) : ($pembagi[$k->id] / max($x, 0.0001));
+                                    $totalV += $r * (float) $k->bobot;
+                                @endphp
+                                <td class="text-center">{{ number_format($r, 4) }}</td>
+                            @endforeach
+                            <td class="text-end fw-bold" style="color: var(--spk-obsidian);">{{ number_format($totalV, 4) }}</td>
+                        </tr>
                     @endforeach
-                    <td class="fw-bold bg-light">{{ number_format($row['nilai_v'], 6) }}</td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 @endsection

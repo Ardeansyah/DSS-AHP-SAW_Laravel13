@@ -2,238 +2,156 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\HasilSpkExport;
+use App\Exports\TemplatePenilaianExport;
+use App\Imports\SiswaPenilaianImport;
 use App\Models\AhpComparison;
 use App\Models\Alternatif;
 use App\Models\Kriteria;
-use App\Models\Penilaian;
+use App\Services\MilestoneGatekeeper;
 use App\Services\SpkAhpSawService;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class SpkController extends Controller
 {
-    public function __construct(private SpkAhpSawService $spk) {}
+    public function __construct(
+        protected SpkAhpSawService $spkService,
+        protected MilestoneGatekeeper $gatekeeper
+    ) {}
 
-    // 1. Dashboard Utama
-    public function dashboard()
-    {
-        $ahp = $this->spk->hitungAhp(false);
-        $saw = $this->spk->hitungSaw();
-
-        return view('spk.dashboard', [
-            'totalKriteria'   => Kriteria::count(),
-            'totalAlternatif' => Alternatif::count(),
-            'ahp'             => $ahp,
-            'top5'            => array_slice($saw['peringkat'] ?? [], 0, 5),
-        ]);
-    }
-
-    // 2. Manajemen Data Kriteria
-    public function kriteriaIndex()
+    // MILESTONE 01: Kriteria
+    public function kriteria()
     {
         $kriterias = Kriteria::orderBy('id')->get();
-        return view('spk.kriteria', compact('kriterias'));
+        $state = $this->gatekeeper->getState();
+
+        return view('spk.kriteria', compact('kriterias', 'state'));
     }
 
-    public function kriteriaStore(Request $request)
+    public function storeKriteria(Request $request)
     {
         $data = $request->validate([
             'kode'    => 'required|string|max:10|unique:kriterias,kode',
-            'nama'    => 'required|string|max:255',
+            'nama'    => 'required|string|max:100',
             'atribut' => 'required|in:benefit,cost',
         ]);
 
         Kriteria::create($data);
+        $this->gatekeeper->getState();
+
         return back()->with('success', 'Kriteria berhasil ditambahkan.');
     }
 
-    public function kriteriaUpdate(Request $request, Kriteria $kriteria)
-    {
-        $data = $request->validate([
-            'kode'    => 'required|string|max:10|unique:kriterias,kode,' . $kriteria->id,
-            'nama'    => 'required|string|max:255',
-            'atribut' => 'required|in:benefit,cost',
-        ]);
-
-        $kriteria->update($data);
-        return back()->with('success', 'Kriteria berhasil diperbarui.');
-    }
-
-    public function kriteriaDestroy(Kriteria $kriteria)
+    public function destroyKriteria(Kriteria $kriteria)
     {
         $kriteria->delete();
-        $this->spk->hitungAhp(true);
-        return back()->with('success', 'Kriteria berhasil dihapus.');
+        $this->gatekeeper->getState();
+
+        return back()->with('success', 'Kriteria dihapus dan status milestone diperbarui.');
     }
 
-    // 3. Pembobotan Kriteria (AHP)
-    public function ahpIndex()
-    {
-        $ahp = $this->spk->hitungAhp(false);
-        return view('spk.ahp', compact('ahp'));
-    }
-
-    public function ahpStore(Request $request)
+    // MILESTONE 02: Pembobotan AHP & Uji Konsistensi
+    public function ahp()
     {
         $kriterias = Kriteria::orderBy('id')->get();
-        $inputMatrix = $request->input('matrix', []);
+        $hasilAhp = $this->spkService->hitungAhp(false);
+
+        return view('spk.ahp', compact('kriterias', 'hasilAhp'));
+    }
+
+    public function hitungAhp(Request $request)
+    {
+        $matrix = $request->input('matrix', []);
+        $kriterias = Kriteria::orderBy('id')->get();
 
         foreach ($kriterias as $i => $k1) {
             foreach ($kriterias as $j => $k2) {
-                if ($i < $j && isset($inputMatrix[$k1->id][$k2->id])) {
-                    $nilai = (float) $inputMatrix[$k1->id][$k2->id];
-                    if ($nilai > 0) {
-                        AhpComparison::updateOrCreate(
-                            ['kriteria_1_id' => $k1->id, 'kriteria_2_id' => $k2->id],
-                            ['nilai' => $nilai]
-                        );
-                    }
-                }
-            }
-        }
-
-        $ahp = $this->spk->hitungAhp(true);
-        $pesan = $ahp['konsisten']
-            ? 'Matriks AHP disimpan. Rasio Konsistensi (CR = ' . number_format($ahp['cr'], 4) . ') KONSISTEN.'
-            : 'Matriks AHP disimpan, namun CR = ' . number_format($ahp['cr'], 4) . ' (> 0.10). Sesuaikan perbandingan agar konsisten.';
-
-        return back()->with($ahp['konsisten'] ? 'success' : 'warning', $pesan);
-    }
-
-    // 4. Manajemen Data Alternatif (Siswa) + Import CSV
-    public function alternatifIndex()
-    {
-        $alternatifs = Alternatif::orderBy('id')->get();
-        return view('spk.alternatif', compact('alternatifs'));
-    }
-
-    public function alternatifStore(Request $request)
-    {
-        $data = $request->validate([
-            'kode'   => 'required|string|max:15|unique:alternatifs,kode',
-            'nama'   => 'required|string|max:255',
-            'kelas'  => 'nullable|string|max:50',
-            'ket_c3' => 'nullable|string',
-            'ket_c4' => 'nullable|string',
-        ]);
-
-        Alternatif::create($data);
-        return back()->with('success', 'Data siswa berhasil ditambahkan.');
-    }
-
-    public function alternatifImportCsv(Request $request)
-    {
-        $request->validate(['file_csv' => 'required|file|mimes:csv,txt']);
-
-        $file = fopen($request->file('file_csv')->getRealPath(), 'r');
-        $header = fgetcsv($file); // Lewati baris header pertama
-        $kriterias = Kriteria::orderBy('id')->get()->keyBy('kode');
-
-        $count = 0;
-        while (($row = fgetcsv($file)) !== false) {
-            if (count($row) < 2 || empty(trim($row[0]))) {
-                continue;
-            }
-
-            // Format kolom CSV: kode, nama, kelas, c1, c2, c3, c4, c5
-            $alt = Alternatif::updateOrCreate(
-                ['kode' => trim($row[0])],
-                [
-                    'nama'  => trim($row[1] ?? '-'),
-                    'kelas' => trim($row[2] ?? '-'),
-                ]
-            );
-
-            $mapNilai = [
-                'C1' => (float) ($row[3] ?? 0),
-                'C2' => (float) ($row[4] ?? 0),
-                'C3' => (float) ($row[5] ?? 0),
-                'C4' => (float) ($row[6] ?? 0),
-                'C5' => (float) ($row[7] ?? 0),
-            ];
-
-            foreach ($mapNilai as $kodeK => $val) {
-                if ($kriterias->has($kodeK)) {
-                    Penilaian::updateOrCreate(
-                        ['alternatif_id' => $alt->id, 'kriteria_id' => $kriterias[$kodeK]->id],
-                        ['nilai' => $val]
+                if ($i < $j && isset($matrix[$k1->id][$k2->id])) {
+                    AhpComparison::updateOrCreate(
+                        ['kriteria_1_id' => $k1->id, 'kriteria_2_id' => $k2->id],
+                        ['nilai' => (float) $matrix[$k1->id][$k2->id]]
                     );
                 }
             }
-            $count++;
         }
-        fclose($file);
 
-        return back()->with('success', "$count data siswa dan nilai kriterianya berhasil diimpor.");
+        $hasilAhp = $this->spkService->hitungAhp(true);
+        $this->gatekeeper->updateAhpStatus($hasilAhp['cr']);
+
+        if ($hasilAhp['cr'] <= 0.10) {
+            return redirect()->route('spk.alternatif')
+                ->with('success', sprintf('Matriks AHP KONSISTEN (CR = %.4f ≤ 0.10). Milestone 03 kini terbuka!', $hasilAhp['cr']));
+        }
+
+        return back()->with('error', sprintf('Matriks AHP TIDAK KONSISTEN (CR = %.4f > 0.10). Sesuaikan nilai perbandingan agar Milestone 03 terbuka.', $hasilAhp['cr']));
     }
 
-    public function alternatifDestroy(Alternatif $alternatif)
-    {
-        $alternatif->delete();
-        return back()->with('success', 'Data siswa berhasil dihapus.');
-    }
-
-    // 5. Input Penilaian Matriks Keputusan (X)
-    public function penilaianIndex()
+    // MILESTONE 03: Data Alternatif & Matriks Penilaian
+    public function alternatif()
     {
         $kriterias = Kriteria::orderBy('id')->get();
-        $alternatifs = Alternatif::orderBy('id')->get();
-        $penilaians = Penilaian::all()->keyBy(fn($p) => $p->alternatif_id . '-' . $p->kriteria_id);
+        $alternatifs = Alternatif::with('penilaians')->orderBy('id')->get();
+        $state = $this->gatekeeper->getState();
 
-        return view('spk.penilaian', compact('kriterias', 'alternatifs', 'penilaians'));
+        return view('spk.alternatif', compact('kriterias', 'alternatifs', 'state'));
     }
 
-    public function penilaianStore(Request $request)
+    public function importExcel(Request $request)
     {
-        $scores = $request->input('nilai', []);
+        $request->validate(['file_excel' => 'required|mimes:xlsx,xls,csv|max:5120']);
 
-        foreach ($scores as $altId => $kriteriaScores) {
-            foreach ($kriteriaScores as $kriteriaId => $val) {
-                Penilaian::updateOrCreate(
-                    ['alternatif_id' => $altId, 'kriteria_id' => $kriteriaId],
-                    ['nilai' => (float) $val]
-                );
-            }
+        Excel::import(new SiswaPenilaianImport, $request->file('file_excel'));
+        $this->gatekeeper->markAlternatifDirty();
+
+        return back()->with('success', 'Data Excel berhasil diimpor. Klik tombol "Validasi Data & Buka Milestone 04" untuk melanjutkan.');
+    }
+
+    public function downloadTemplate()
+    {
+        return Excel::download(new TemplatePenilaianExport, 'Template_Penilaian_SNBP_SMKN8.xlsx');
+    }
+
+    public function validasiAlternatif()
+    {
+        $res = $this->gatekeeper->validateAlternatifData();
+
+        if (!$res['ok']) {
+            return back()->with('error', $res['message']);
         }
 
-        return back()->with('success', 'Seluruh nilai matriks penilaian berhasil disimpan.');
+        return redirect()->route('spk.perhitungan')->with('success', $res['message']);
     }
 
-    // 6. Tahapan Perhitungan & Hasil Perangkingan SAW
-    public function perhitunganSaw()
+    // MILESTONE 04: Proses Perhitungan & Normalisasi SAW
+    public function perhitungan()
     {
-        $saw = $this->spk->hitungSaw();
-        return view('spk.perhitungan', compact('saw'));
+        $hasilSaw = $this->spkService->hitungSaw();
+        $state = $this->gatekeeper->getState();
+
+        return view('spk.perhitungan', compact('hasilSaw', 'state'));
     }
 
-    // 7. Analisis Sensitivitas Bobot (Total Bobot Tetap = 1)
-    public function sensitivitas(Request $request)
+    public function finalisasiSaw()
     {
+        $this->gatekeeper->completeSawCalculation();
+
+        return redirect()->route('spk.hasil')
+            ->with('success', 'Perhitungan SAW berhasil difinalisasi. Milestone 05 kini terbuka!');
+    }
+
+    // MILESTONE 05: Hasil Akhir, Evaluasi & Analisis Sensitivitas
+    public function hasil()
+    {
+        $hasilSaw = $this->spkService->hitungSaw();
         $kriterias = Kriteria::orderBy('id')->get();
-        $sawAsli = $this->spk->hitungSaw();
-        $sawSimulasi = null;
-        $bobotBaru = [];
-        $targetId = $request->input('kriteria_id');
-        $persenUbah = (float) $request->input('persentase', 0);
+        $daftarKelas = Alternatif::select('kelas')->distinct()->orderBy('kelas')->pluck('kelas');
 
-        if ($request->filled('kriteria_id') && $kriterias->count() > 1) {
-            $target = $kriterias->firstWhere('id', $targetId);
-            $wLama = (float) $target->bobot;
-            $wBaruTarget = max(0.01, min(0.95, $wLama * (1 + ($persenUbah / 100))));
-            $sisaBobotLama = 1.0 - $wLama;
-            $sisaBobotBaru = 1.0 - $wBaruTarget;
+        return view('spk.hasil', compact('hasilSaw', 'kriterias', 'daftarKelas'));
+    }
 
-            foreach ($kriterias as $k) {
-                if ($k->id == $targetId) {
-                    $bobotBaru[$k->id] = $wBaruTarget;
-                } else {
-                    $proporsi = $sisaBobotLama > 0 ? ((float) $k->bobot / $sisaBobotLama) : (1 / ($kriterias->count() - 1));
-                    $bobotBaru[$k->id] = $proporsi * $sisaBobotBaru;
-                }
-            }
-
-            $sawSimulasi = $this->spk->hitungSaw($bobotBaru);
-        }
-
-        return view('spk.sensitivitas', compact('kriterias', 'sawAsli', 'sawSimulasi', 'bobotBaru', 'targetId', 'persenUbah'));
+    public function exportExcel()
+    {
+        return Excel::download(new HasilSpkExport, 'Hasil_SPK_SNBP_SMKN8_Surabaya.xlsx');
     }
 }

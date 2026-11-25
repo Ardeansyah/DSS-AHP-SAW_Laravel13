@@ -3,23 +3,43 @@
 use App\Http\Controllers\SpkController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [SpkController::class, 'dashboard'])->name('dashboard');
+// Redirect root & URL lama ke alur Milestone SPK
+Route::get('/', fn() => redirect()->route('spk.kriteria'));
+Route::get('/kriteria', fn() => redirect()->route('spk.kriteria'));
+Route::get('/ahp', fn() => redirect()->route('spk.ahp'));
+Route::get('/alternatif', fn() => redirect()->route('spk.alternatif'));
+Route::get('/perhitungan', fn() => redirect()->route('spk.perhitungan'));
+Route::get('/hasil', fn() => redirect()->route('spk.hasil'));
 
-Route::get('/kriteria', [SpkController::class, 'kriteriaIndex'])->name('kriteria.index');
-Route::post('/kriteria', [SpkController::class, 'kriteriaStore'])->name('kriteria.store');
-Route::put('/kriteria/{kriteria}', [SpkController::class, 'kriteriaUpdate'])->name('kriteria.update');
-Route::delete('/kriteria/{kriteria}', [SpkController::class, 'kriteriaDestroy'])->name('kriteria.destroy');
+Route::prefix('spk')->name('spk.')->group(function () {
+    // Milestone 01: Kriteria (Selalu Terbuka)
+    Route::get('/kriteria', [SpkController::class, 'kriteria'])->name('kriteria');
+    Route::post('/kriteria', [SpkController::class, 'storeKriteria'])->name('kriteria.store');
+    Route::delete('/kriteria/{kriteria}', [SpkController::class, 'destroyKriteria'])->name('kriteria.destroy');
 
-Route::get('/ahp', [SpkController::class, 'ahpIndex'])->name('ahp.index');
-Route::post('/ahp', [SpkController::class, 'ahpStore'])->name('ahp.store');
+    // Milestone 02: Pembobotan AHP
+    Route::middleware('milestone:2')->group(function () {
+        Route::get('/ahp', [SpkController::class, 'ahp'])->name('ahp');
+        Route::post('/ahp/hitung', [SpkController::class, 'hitungAhp'])->name('ahp.hitung');
+    });
 
-Route::get('/alternatif', [SpkController::class, 'alternatifIndex'])->name('alternatif.index');
-Route::post('/alternatif', [SpkController::class, 'alternatifStore'])->name('alternatif.store');
-Route::post('/alternatif/import', [SpkController::class, 'alternatifImportCsv'])->name('alternatif.import');
-Route::delete('/alternatif/{alternatif}', [SpkController::class, 'alternatifDestroy'])->name('alternatif.destroy');
+    // Milestone 03: Data Alternatif & Matriks Penilaian
+    Route::middleware('milestone:3')->group(function () {
+        Route::get('/alternatif', [SpkController::class, 'alternatif'])->name('alternatif');
+        Route::post('/alternatif/import', [SpkController::class, 'importExcel'])->name('alternatif.import');
+        Route::get('/alternatif/template', [SpkController::class, 'downloadTemplate'])->name('alternatif.template');
+        Route::post('/alternatif/validasi', [SpkController::class, 'validasiAlternatif'])->name('alternatif.validasi');
+    });
 
-Route::get('/penilaian', [SpkController::class, 'penilaianIndex'])->name('penilaian.index');
-Route::post('/penilaian', [SpkController::class, 'penilaianStore'])->name('penilaian.store');
+    // Milestone 04: Proses Perhitungan & Normalisasi SAW
+    Route::middleware('milestone:4')->group(function () {
+        Route::get('/perhitungan', [SpkController::class, 'perhitungan'])->name('perhitungan');
+        Route::post('/perhitungan/finalisasi', [SpkController::class, 'finalisasiSaw'])->name('perhitungan.finalisasi');
+    });
 
-Route::get('/perhitungan', [SpkController::class, 'perhitunganSaw'])->name('perhitungan.index');
-Route::get('/sensitivitas', [SpkController::class, 'sensitivitas'])->name('sensitivitas.index');
+    // Milestone 05: Hasil Perangkingan, Evaluasi & Analisis Sensitivitas
+    Route::middleware('milestone:5')->group(function () {
+        Route::get('/hasil', [SpkController::class, 'hasil'])->name('hasil');
+        Route::get('/hasil/export', [SpkController::class, 'exportExcel'])->name('hasil.export');
+    });
+});

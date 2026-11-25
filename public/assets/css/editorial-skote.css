@@ -1,0 +1,224 @@
+/* public/assets/css/editorial-skote.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+    --spk-obsidian: #111111;
+    --spk-obsidian-hover: #2C2C2C;
+    --spk-camel: #C89D7C;
+    --spk-camel-soft: #F7F1EB;
+    --spk-canvas: #F8F8F7;
+    --spk-surface: #FFFFFF;
+    --spk-border: #E4E4E2;
+    --spk-ink: #1A1A1A;
+    --spk-muted: #6E6E6C;
+    --spk-ash: #F1F1EF;
+    --spk-sage: #2E5A44;
+    --spk-sage-soft: #EBF3EE;
+    --spk-crimson: #A63A3A;
+    --spk-crimson-soft: #F9ECEC;
+}
+
+body {
+    background-color: var(--spk-canvas) !important;
+    color: var(--spk-ink) !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Topbar Minimalist */
+#page-topbar {
+    background-color: var(--spk-surface) !important;
+    border-bottom: 1px solid var(--spk-border) !important;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    z-index: 1020;
+}
+
+/* Sidebar Editorial */
+nav.col-lg-2 {
+    background-color: var(--spk-surface) !important;
+    border-right: 1px solid var(--spk-border) !important;
+}
+
+nav .nav-link {
+    font-size: 13.5px;
+    border-radius: 4px !important;
+    transition: all 0.18s ease;
+}
+
+nav .nav-link:hover:not(.opacity-50) {
+    background-color: var(--spk-canvas) !important;
+    color: var(--spk-obsidian) !important;
+}
+
+/* 5-Stage Horizontal Milestone Progress Stepper */
+.milestone-bar {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+@media (max-width: 1100px) {
+    .milestone-bar {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 576px) {
+    .milestone-bar {
+        grid-template-columns: 1fr;
+    }
+}
+
+.milestone-step {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background-color: var(--spk-surface);
+    border: 1px solid var(--spk-border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    text-decoration: none !important;
+    color: var(--spk-ink) !important;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    min-height: 98px;
+}
+
+.milestone-step:hover:not(.locked) {
+    border-color: var(--spk-obsidian);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(17, 17, 17, 0.05);
+}
+
+.milestone-step.active {
+    border: 1.5px solid var(--spk-obsidian);
+    background-color: var(--spk-camel-soft);
+    box-shadow: 0 2px 8px rgba(200, 157, 124, 0.18);
+}
+
+.milestone-step.completed {
+    border-color: #B7D1C3;
+    background-color: var(--spk-surface);
+}
+
+.milestone-step.locked {
+    background-color: var(--spk-ash);
+    border-color: var(--spk-border);
+    color: var(--spk-muted) !important;
+    cursor: not-allowed;
+    pointer-events: none;
+    opacity: 0.72;
+}
+
+.milestone-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--spk-muted);
+}
+
+.milestone-step.active .milestone-badge {
+    color: var(--spk-obsidian);
+}
+
+/* Card & Sharp Editorial Borders */
+.card {
+    background-color: var(--spk-surface) !important;
+    border: 1px solid var(--spk-border) !important;
+    border-radius: 6px !important;
+    box-shadow: 0 1px 3px rgba(17, 17, 17, 0.03) !important;
+}
+
+.card-header {
+    background-color: var(--spk-surface) !important;
+    border-bottom: 1px solid var(--spk-border) !important;
+    padding: 16px 20px !important;
+}
+
+.card-body {
+    padding: 20px !important;
+}
+
+.card-title {
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--spk-ink);
+}
+
+/* Editorial Buttons (Menimpa biru default Bootstrap) */
+.btn-primary {
+    background-color: var(--spk-obsidian) !important;
+    border-color: var(--spk-obsidian) !important;
+    color: #FFFFFF !important;
+    border-radius: 4px !important;
+    font-weight: 500;
+    font-size: 13.5px;
+    padding: 8px 16px;
+}
+
+.btn-primary:hover {
+    background-color: var(--spk-obsidian-hover) !important;
+    border-color: var(--spk-obsidian-hover) !important;
+}
+
+.btn-camel {
+    background-color: var(--spk-camel) !important;
+    border-color: var(--spk-camel) !important;
+    color: #FFFFFF !important;
+    border-radius: 4px !important;
+    font-weight: 600;
+    font-size: 13.5px;
+    padding: 8px 16px;
+}
+
+.btn-camel:hover {
+    background-color: #B68967 !important;
+    border-color: #B68967 !important;
+    color: #FFFFFF !important;
+}
+
+.btn-outline-editorial {
+    background-color: #FFFFFF !important;
+    border: 1px solid var(--spk-border) !important;
+    color: var(--spk-ink) !important;
+    border-radius: 4px !important;
+    font-weight: 500;
+}
+
+.btn-outline-editorial:hover {
+    border-color: var(--spk-obsidian) !important;
+    background-color: var(--spk-canvas) !important;
+}
+
+/* Tables */
+.table thead th {
+    background-color: var(--spk-obsidian) !important;
+    color: #FFFFFF !important;
+    font-weight: 600;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-color: var(--spk-obsidian) !important;
+    padding: 11px 14px;
+}
+
+.table tbody td {
+    border-color: var(--spk-border) !important;
+    padding: 11px 14px;
+    font-size: 13.5px;
+}
+
+/* Form Controls */
+.form-control, .form-select {
+    border-color: var(--spk-border) !important;
+    border-radius: 4px !important;
+    font-size: 13.5px;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--spk-obsidian) !important;
+    box-shadow: 0 0 0 0.15rem rgba(17, 17, 17, 0.12) !important;
+}
