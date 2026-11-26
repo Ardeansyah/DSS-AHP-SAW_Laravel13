@@ -22,15 +22,15 @@ Rekomendasi paket instalasi cepat:
 ## 2. Prosedur Menjalankan Project dari 0
 
 1. Clone repositori dan masuk ke direktori proyek:
-   git clone <URL_REPOSITORI> spk-ahp-saw
-   cd spk-ahp-saw
+   [git clone <URL_REPOSITORI> spk-ahp-saw
+   cd spk-ahp-saw]
 
 2. Instal seluruh dependensi PHP:
-   composer install --ignore-platform-req=ext-gd --ignore-platform-req=ext-iconv
+   [composer install --ignore-platform-req=ext-gd --ignore-platform-req=ext-iconv]
 
 3. Salin file konfigurasi environment dan generate application key:
-   cp .env.example .env
-   php artisan key:generate
+   [cp .env.example .env
+   php artisan key:generate]
 
 4. Pastikan koneksi database di file `.env` diatur ke SQLite (hapus atau beri tanda `#` pada konfigurasi `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` jika ada):
    DB_CONNECTION=sqlite
