@@ -3,15 +3,18 @@
 use App\Http\Controllers\SpkController;
 use Illuminate\Support\Facades\Route;
 
-// Redirect root & URL lama ke alur Milestone SPK
-Route::get('/', fn() => redirect()->route('spk.kriteria'));
-Route::get('/kriteria', fn() => redirect()->route('spk.kriteria'));
-Route::get('/ahp', fn() => redirect()->route('spk.ahp'));
-Route::get('/alternatif', fn() => redirect()->route('spk.alternatif'));
-Route::get('/perhitungan', fn() => redirect()->route('spk.perhitungan'));
-Route::get('/hasil', fn() => redirect()->route('spk.hasil'));
+// Redirect root & URL lama ke alur Milestone SPK (kompatibel dengan route:cache)
+Route::redirect('/', '/spk/kriteria');
+Route::redirect('/kriteria', '/spk/kriteria');
+Route::redirect('/ahp', '/spk/ahp');
+Route::redirect('/alternatif', '/spk/alternatif');
+Route::redirect('/perhitungan', '/spk/perhitungan');
+Route::redirect('/hasil', '/spk/hasil');
 
 Route::prefix('spk')->name('spk.')->group(function () {
+    // Reset seluruh sistem ke kondisi awal (Milestone 01)
+    Route::post('/reset', [SpkController::class, 'resetSistem'])->name('reset');
+
     // Milestone 01: Kriteria (Selalu Terbuka)
     Route::get('/kriteria', [SpkController::class, 'kriteria'])->name('kriteria');
     Route::post('/kriteria', [SpkController::class, 'storeKriteria'])->name('kriteria.store');

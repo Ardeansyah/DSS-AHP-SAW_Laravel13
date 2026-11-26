@@ -46,7 +46,7 @@
                     <div>
                         <span class="badge bg-dark">{{ $k->kode }}</span>
                         Max = <strong>{{ number_format($pembagi[$k->id], 2) }}</strong> |
-                        Bobot ($w$) = <strong>{{ number_format($k->bobot, 4) }}</strong>
+                        Bobot (W) = <strong>{{ number_format($k->bobot, 4) }}</strong>
                     </div>
                 @endforeach
             </div>

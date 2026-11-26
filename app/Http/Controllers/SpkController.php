@@ -8,9 +8,11 @@ use App\Imports\SiswaPenilaianImport;
 use App\Models\AhpComparison;
 use App\Models\Alternatif;
 use App\Models\Kriteria;
+use App\Models\Penilaian;
 use App\Services\MilestoneGatekeeper;
 use App\Services\SpkAhpSawService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class SpkController extends Controller
@@ -70,7 +72,7 @@ class SpkController extends Controller
                 if ($i < $j && isset($matrix[$k1->id][$k2->id])) {
                     AhpComparison::updateOrCreate(
                         ['kriteria_1_id' => $k1->id, 'kriteria_2_id' => $k2->id],
-                        ['nilai' => (float) $matrix[$k1->id][$k2->id]]
+                        ['nilai' => round((float) $matrix[$k1->id][$k2->id], 4)]
                     );
                 }
             }
@@ -97,7 +99,7 @@ class SpkController extends Controller
         return view('spk.alternatif', compact('kriterias', 'alternatifs', 'state'));
     }
 
-   public function importExcel(Request $request)
+    public function importExcel(Request $request)
     {
         $request->validate(['file_excel' => 'required|mimes:xlsx,xls,csv|max:5120']);
 
@@ -108,7 +110,7 @@ class SpkController extends Controller
 
         return back()->with('success', "Dataset alternatif berhasil di-reset dan diganti dengan {$totalBaru} data baru dari file Excel. Klik \"Validasi Data & Buka Milestone 04\" untuk melanjutkan.");
     }
-    
+
     public function downloadTemplate()
     {
         return Excel::download(new TemplatePenilaianExport, 'Template_Penilaian_SNBP_SMKN8.xlsx');
@@ -132,6 +134,29 @@ class SpkController extends Controller
         $state = $this->gatekeeper->getState();
 
         return view('spk.perhitungan', compact('hasilSaw', 'state'));
+    }
+
+    public function resetSistem()
+    {
+        DB::transaction(function () {
+            Penilaian::query()->delete();
+            Alternatif::query()->delete();
+            AhpComparison::query()->delete();
+            Kriteria::query()->delete();
+
+            DB::table('spk_states')->update([
+                'm1_kriteria_valid'         => false,
+                'm2_ahp_konsisten'          => false,
+                'm3_alternatif_tervalidasi' => false,
+                'm4_saw_terhitung'          => false,
+                'last_cr'                   => null,
+                'm4_calculated_at'          => null,
+                'updated_at'                => now(),
+            ]);
+        });
+
+        return redirect()->route('spk.kriteria')
+            ->with('success', 'Sistem berhasil di-reset ke kondisi awal. Silakan mulai dari Milestone 01.');
     }
 
     public function finalisasiSaw()

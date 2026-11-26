@@ -41,6 +41,21 @@
                 <span class="text-muted small">Progres Tahapan:</span>
                 <span class="badge bg-dark px-2 py-1">{{ $completedCount }} / 5 Milestone</span>
             </div>
+             <div class="d-flex align-items-center gap-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small d-none d-sm-inline">Progres Tahapan:</span>
+                    <span class="badge bg-dark px-2 py-1">{{ $completedCount }} / 5 Milestone</span>
+                </div>
+
+                <form action="{{ route('spk.reset') }}" method="POST" class="m-0"
+                      onsubmit="return confirm('Mulai dari awal? Seluruh data kriteria, bobot AHP, dan data alternatif saat ini akan dihapus.');">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-danger btn-sm d-flex align-items-center gap-1" title="Reset seluruh tahapan ke awal">
+                        <i class="bx bx-reset"></i>
+                        <span class="d-none d-md-inline">Mulai dari Awal</span>
+                    </button>
+                </form>
+            </div>
         </div>
     </header>
 

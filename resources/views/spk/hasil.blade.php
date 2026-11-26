@@ -83,7 +83,7 @@
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
             <h5 class="card-title mb-0">Hasil Pemeringkatan Akhir Siswa Eligible SNBP (132 Siswa)</h5>
-            <small class="text-muted">Urutan berdasarkan nilai preferensi akhir ($V_i$) metode Hybrid AHP–SAW</small>
+            <small class="text-muted">Urutan berdasarkan nilai preferensi akhir (Vi) metode Hybrid AHP–SAW</small>
         </div>
         <div class="d-flex gap-2">
             <select id="filterKelas" class="form-select form-select-sm" style="width: 200px;">
@@ -107,7 +107,7 @@
                         <th width="9%">Kode</th>
                         <th>Nama Siswa</th>
                         <th width="15%">Kelas</th>
-                        <th width="13%" class="text-end">Skor Asli ($V_i$)</th>
+                        <th width="13%" class="text-end">Skor Asli (Vi)</th>
                         <th width="13%" class="text-end">Skor Simulasi</th>
                     </tr>
                 </thead>
