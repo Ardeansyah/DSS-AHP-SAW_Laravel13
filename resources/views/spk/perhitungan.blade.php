@@ -16,16 +16,27 @@
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <div>
-            <h5 class="card-title mb-0">Tahapan Perhitungan Simple Additive Weighting (SAW)</h5>
-            <small class="text-muted">Penelusuran Matriks Keputusan ($X$), Matriks Normalisasi ($R_{ij} = x_{ij} / \max x_{ij}$), dan Nilai Preferensi ($V_i = \sum w_j r_{ij}$)</small>
+    <div>
+    </div>
+    <form action="{{ route('spk.perhitungan.finalisasi') }}" method="POST">
+        @csrf
+        <button type="submit" class="btn btn-primary px-4">
+            <i class="bx bx-check-double me-1"></i> Finalisasi Perhitungan &amp; Buka Milestone 05
+        </button>
+    </form>
+</div>
+<div class="card-body">
+    <div class="alert border" style="background: var(--spk-canvas);">
+        <strong>Nilai Pembagi Maksimum (max <i>X<sub>j</sub></i>) Tiap Kriteria Benefit:</strong>
+        <div class="d-flex flex-wrap gap-4 mt-2 small">
+            @foreach($kriterias as $k)
+                <div>
+                    <span class="badge bg-dark">{{ $k->kode }}</span>
+                    Max = <strong>{{ number_format($pembagi[$k->id], 2) }}</strong> |
+                    Bobot (<i>w</i>) = <strong>{{ number_format($k->bobot, 4) }}</strong>
+                </div>
+            @endforeach
         </div>
-        <form action="{{ route('spk.perhitungan.finalisasi') }}" method="POST">
-            @csrf
-            <button type="submit" class="btn btn-primary px-4">
-                <i class="bx bx-check-double me-1"></i> Finalisasi Perhitungan &amp; Buka Milestone 05
-            </button>
-        </form>
     </div>
     <div class="card-body">
         <div class="alert border" style="background: var(--spk-canvas);">
@@ -47,8 +58,8 @@
                     <tr>
                         <th rowspan="2">Kode</th>
                         <th rowspan="2">Nama Siswa</th>
-                        <th colspan="{{ $kriterias->count() }}" class="text-center">Matriks Normalisasi ($R_{ij}$)</th>
-                        <th rowspan="2" class="text-end">Skor Preferensi ($V_i$)</th>
+                        <th colspan="{{ $kriterias->count() }}" class="text-center">Matriks Normalisasi</th>
+                        <th rowspan="2" class="text-end">Skor Preferensi</th>
                     </tr>
                     <tr>
                         @foreach($kriterias as $k)

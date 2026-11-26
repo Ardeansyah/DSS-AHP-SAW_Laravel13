@@ -97,16 +97,18 @@ class SpkController extends Controller
         return view('spk.alternatif', compact('kriterias', 'alternatifs', 'state'));
     }
 
-    public function importExcel(Request $request)
+   public function importExcel(Request $request)
     {
         $request->validate(['file_excel' => 'required|mimes:xlsx,xls,csv|max:5120']);
 
         Excel::import(new SiswaPenilaianImport, $request->file('file_excel'));
         $this->gatekeeper->markAlternatifDirty();
 
-        return back()->with('success', 'Data Excel berhasil diimpor. Klik tombol "Validasi Data & Buka Milestone 04" untuk melanjutkan.');
-    }
+        $totalBaru = Alternatif::count();
 
+        return back()->with('success', "Dataset alternatif berhasil di-reset dan diganti dengan {$totalBaru} data baru dari file Excel. Klik \"Validasi Data & Buka Milestone 04\" untuk melanjutkan.");
+    }
+    
     public function downloadTemplate()
     {
         return Excel::download(new TemplatePenilaianExport, 'Template_Penilaian_SNBP_SMKN8.xlsx');

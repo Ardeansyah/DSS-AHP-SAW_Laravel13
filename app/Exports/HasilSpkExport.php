@@ -4,7 +4,6 @@ namespace App\Exports;
 
 use App\Models\Alternatif;
 use App\Models\Kriteria;
-use App\Models\Penilaian;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -12,60 +11,77 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class TemplatePenilaianExport implements FromArray, WithHeadings, WithTitle, WithStyles, WithColumnWidths
+class HasilSpkExport implements FromArray, WithHeadings, WithTitle, WithStyles, WithColumnWidths
 {
     public function title(): string
     {
-        return 'Template_Siswa_SNBP';
+        return 'Hasil_Perangkingan_SAW';
     }
 
     public function columnWidths(): array
     {
         return [
-            'A' => 10,
-            'B' => 38,
-            'C' => 20,
-            'D' => 12,
-            'E' => 12,
-            'F' => 12,
-            'G' => 12,
-            'H' => 12,
+            'A' => 12,
+            'B' => 10,
+            'C' => 36,
+            'D' => 20,
+            'E' => 14,
+            'F' => 14,
+            'G' => 14,
+            'H' => 14,
+            'I' => 14,
+            'J' => 18,
         ];
     }
 
     public function headings(): array
     {
-        return ['kode', 'nama', 'kelas', 'c1', 'c2', 'c3', 'c4', 'c5'];
+        return ['Peringkat', 'Kode', 'Nama Siswa', 'Kelas', 'R_C1', 'R_C2', 'R_C3', 'R_C4', 'R_C5', 'Skor Akhir (V)'];
     }
 
     public function array(): array
     {
-        $kriterias = Kriteria::orderBy('id')->get()->keyBy('kode');
-        $alternatifs = Alternatif::orderBy('id')->get();
-        $penilaians = Penilaian::all()->keyBy(fn($p) => $p->alternatif_id . '-' . $p->kriteria_id);
+        $kriterias = Kriteria::orderBy('id')->get();
+        $alternatifs = Alternatif::with('penilaians')->get();
 
-        if ($alternatifs->isEmpty()) {
-            return [
-                ['A1', 'Dzakiyah Putri Sholeha', 'XII Kuliner 4', 88.50, 89.00, 0, 0, 85.00],
-                ['A2', 'DIRGANTARA PAMUNGKAS PUTRA POERNOMO', 'XII DKV 1', 90.20, 91.50, 4, 1, 88.40],
-            ];
+        $pembagi = [];
+        foreach ($kriterias as $k) {
+            $vals = $alternatifs->map(fn($a) => (float) ($a->penilaians->firstWhere('kriteria_id', $k->id)->nilai ?? 0));
+            $pembagi[$k->id] = max($vals->max(), 0.0001);
         }
 
-        $rows = [];
-        foreach ($alternatifs as $alt) {
-            $getVal = fn(string $kode) => $kriterias->has($kode)
-                ? (float) ($penilaians[$alt->id . '-' . $kriterias[$kode]->id]->nilai ?? 0)
-                : 0;
+        $ranked = $alternatifs->map(function ($alt) use ($kriterias, $pembagi) {
+            $pMap = $alt->penilaians->keyBy('kriteria_id');
+            $r = [];
+            $skor = 0;
+            foreach ($kriterias as $k) {
+                $x = (float) ($pMap[$k->id]->nilai ?? 0);
+                $norm = $x / $pembagi[$k->id];
+                $r[$k->kode] = round($norm, 4);
+                $skor += $norm * (float) $k->bobot;
+            }
+            return [
+                'kode'  => $alt->kode,
+                'nama'  => $alt->nama,
+                'kelas' => $alt->kelas,
+                'r'     => $r,
+                'skor'  => round($skor, 4),
+            ];
+        })->sortByDesc('skor')->values();
 
+        $rows = [];
+        foreach ($ranked as $idx => $item) {
             $rows[] = [
-                $alt->kode,
-                $alt->nama,
-                $alt->kelas,
-                $getVal('C1'),
-                $getVal('C2'),
-                $getVal('C3'),
-                $getVal('C4'),
-                $getVal('C5'),
+                $idx + 1,
+                $item['kode'],
+                $item['nama'],
+                $item['kelas'],
+                $item['r']['C1'] ?? 0,
+                $item['r']['C2'] ?? 0,
+                $item['r']['C3'] ?? 0,
+                $item['r']['C4'] ?? 0,
+                $item['r']['C5'] ?? 0,
+                $item['skor'],
             ];
         }
 

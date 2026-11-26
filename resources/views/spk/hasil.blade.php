@@ -141,7 +141,7 @@ function renderRanking() {
     }
 
     document.getElementById('sensInfo').innerHTML =
-        `Bobot Ternormalisasi ($\sum w = 1.0000$): <strong>${labelParts.join(' | ')}</strong>`;
+        `Bobot Ternormalisasi (W = 1.0000$): <strong>${labelParts.join(' | ')}</strong>`;
 
     // Hitung skor simulasi
     const simulated = rawRanking.map((item, idx) => {

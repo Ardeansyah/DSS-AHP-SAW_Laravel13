@@ -2,9 +2,6 @@
 
 namespace App\Exports;
 
-use App\Models\Alternatif;
-use App\Models\Kriteria;
-use App\Models\Penilaian;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithHeadings;
@@ -16,15 +13,15 @@ class TemplatePenilaianExport implements FromArray, WithHeadings, WithTitle, Wit
 {
     public function title(): string
     {
-        return 'Template_Siswa_SNBP';
+        return 'Template_Input_Alternatif';
     }
 
     public function columnWidths(): array
     {
         return [
             'A' => 10,
-            'B' => 38,
-            'C' => 20,
+            'B' => 32,
+            'C' => 18,
             'D' => 12,
             'E' => 12,
             'F' => 12,
@@ -40,36 +37,11 @@ class TemplatePenilaianExport implements FromArray, WithHeadings, WithTitle, Wit
 
     public function array(): array
     {
-        $kriterias = Kriteria::orderBy('id')->get()->keyBy('kode');
-        $alternatifs = Alternatif::orderBy('id')->get();
-        $penilaians = Penilaian::all()->keyBy(fn($p) => $p->alternatif_id . '-' . $p->kriteria_id);
-
-        if ($alternatifs->isEmpty()) {
-            return [
-                ['A1', 'Dzakiyah Putri Sholeha', 'XII Kuliner 4', 88.50, 89.00, 0, 0, 85.00],
-                ['A2', 'DIRGANTARA PAMUNGKAS PUTRA POERNOMO', 'XII DKV 1', 90.20, 91.50, 4, 1, 88.40],
-            ];
-        }
-
-        $rows = [];
-        foreach ($alternatifs as $alt) {
-            $getVal = fn(string $kode) => $kriterias->has($kode)
-                ? (float) ($penilaians[$alt->id . '-' . $kriterias[$kode]->id]->nilai ?? 0)
-                : 0;
-
-            $rows[] = [
-                $alt->kode,
-                $alt->nama,
-                $alt->kelas,
-                $getVal('C1'),
-                $getVal('C2'),
-                $getVal('C3'),
-                $getVal('C4'),
-                $getVal('C5'),
-            ];
-        }
-
-        return $rows;
+        return [
+            ['A1', 'Contoh Siswa Pertama', 'XII RPL 1', 88.50, 90.00, 4, 2, 85.40],
+            ['A2', 'Contoh Siswa Kedua',   'XII TKJ 2', 86.20, 88.75, 0, 3, 82.10],
+            ['A3', 'Contoh Siswa Ketiga',  'XII DKV 1', 91.00, 92.30, 5, 0, 89.00],
+        ];
     }
 
     public function styles(Worksheet $sheet): array

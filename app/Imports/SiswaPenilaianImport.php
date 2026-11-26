@@ -1,84 +1,77 @@
 <?php
 
-namespace App\Exports;
+namespace App\Imports;
 
 use App\Models\Alternatif;
 use App\Models\Kriteria;
 use App\Models\Penilaian;
-use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\WithColumnWidths;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithTitle;
-use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Concerns\ToCollection;
+use Maatwebsite\Excel\Concerns\WithHeadingRow;
 
-class TemplatePenilaianExport implements FromArray, WithHeadings, WithTitle, WithStyles, WithColumnWidths
+class SiswaPenilaianImport implements ToCollection, WithHeadingRow
 {
-    public function title(): string
+    public function collection(Collection $rows): void
     {
-        return 'Template_Siswa_SNBP';
-    }
+        $kriterias = Kriteria::all()->keyBy(fn($k) => strtolower(trim($k->kode)));
 
-    public function columnWidths(): array
-    {
-        return [
-            'A' => 10,
-            'B' => 38,
-            'C' => 20,
-            'D' => 12,
-            'E' => 12,
-            'F' => 12,
-            'G' => 12,
-            'H' => 12,
-        ];
-    }
+        // Saring hanya baris yang memiliki kode atau nama valid
+        $validRows = $rows->filter(function ($row) {
+            $kode = trim((string) ($row['kode'] ?? ''));
+            $nama = trim((string) ($row['nama'] ?? ''));
+            return $kode !== '' || $nama !== '';
+        });
 
-    public function headings(): array
-    {
-        return ['kode', 'nama', 'kelas', 'c1', 'c2', 'c3', 'c4', 'c5'];
-    }
-
-    public function array(): array
-    {
-        $kriterias = Kriteria::orderBy('id')->get()->keyBy('kode');
-        $alternatifs = Alternatif::orderBy('id')->get();
-        $penilaians = Penilaian::all()->keyBy(fn($p) => $p->alternatif_id . '-' . $p->kriteria_id);
-
-        if ($alternatifs->isEmpty()) {
-            return [
-                ['A1', 'Dzakiyah Putri Sholeha', 'XII Kuliner 4', 88.50, 89.00, 0, 0, 85.00],
-                ['A2', 'DIRGANTARA PAMUNGKAS PUTRA POERNOMO', 'XII DKV 1', 90.20, 91.50, 4, 1, 88.40],
-            ];
+        if ($validRows->isEmpty()) {
+            return;
         }
 
-        $rows = [];
-        foreach ($alternatifs as $alt) {
-            $getVal = fn(string $kode) => $kriterias->has($kode)
-                ? (float) ($penilaians[$alt->id . '-' . $kriterias[$kode]->id]->nilai ?? 0)
-                : 0;
+        DB::transaction(function () use ($validRows, $kriterias) {
+            // Reset bersih data penilaian & alternatif lama sebelum memasukkan dataset baru
+            Penilaian::query()->delete();
+            Alternatif::query()->delete();
 
-            $rows[] = [
-                $alt->kode,
-                $alt->nama,
-                $alt->kelas,
-                $getVal('C1'),
-                $getVal('C2'),
-                $getVal('C3'),
-                $getVal('C4'),
-                $getVal('C5'),
-            ];
-        }
+            $now = now();
+            $penilaianBatch = [];
 
-        return $rows;
-    }
+            foreach ($validRows as $index => $row) {
+                $kodeRaw  = trim((string) ($row['kode'] ?? ''));
+                $namaRaw  = trim((string) ($row['nama'] ?? ''));
+                $kelasRaw = trim((string) ($row['kelas'] ?? '-'));
 
-    public function styles(Worksheet $sheet): array
-    {
-        return [
-            1 => [
-                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-                'fill' => ['fillType' => 'solid', 'startColor' => ['rgb' => '111111']],
-            ],
-        ];
+                $kode  = mb_strtoupper($kodeRaw !== '' ? $kodeRaw : 'A' . ($index + 1), 'UTF-8');
+                $nama  = mb_strtoupper(preg_replace('/\s+/', ' ', $namaRaw !== '' ? $namaRaw : $kode), 'UTF-8');
+                $kelas = mb_strtoupper(preg_replace('/\s+/', ' ', $kelasRaw !== '' ? $kelasRaw : '-'), 'UTF-8');
+
+                $alternatif = Alternatif::create([
+                    'kode'   => $kode,
+                    'nama'   => $nama,
+                    'kelas'  => $kelas,
+                    'ket_c3' => '-',
+                    'ket_c4' => '-',
+                ]);
+
+                foreach ($kriterias as $kodeLower => $kriteria) {
+                    $rawVal = $row[$kodeLower] ?? 0;
+                    $nilai = ($rawVal !== '' && $rawVal !== null)
+                        ? (float) str_replace(',', '.', (string) $rawVal)
+                        : 0.0;
+
+                    $penilaianBatch[] = [
+                        'alternatif_id' => $alternatif->id,
+                        'kriteria_id'   => $kriteria->id,
+                        'nilai'         => $nilai,
+                        'created_at'    => $now,
+                        'updated_at'    => $now,
+                    ];
+                }
+            }
+
+            // Insert massal agar proses impor ratusan baris selesai dalam hitungan milidetik
+            foreach (array_chunk($penilaianBatch, 500) as $chunk) {
+                Penilaian::insert($chunk);
+            }
+        });
     }
 }
