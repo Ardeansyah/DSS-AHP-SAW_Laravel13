@@ -1,58 +1,51 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SPK Hybrid AHP–SAW (Laravel)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi Sistem Pendukung Keputusan (SPK) berbasis Laravel yang mengintegrasikan metode Analytical Hierarchy Process (AHP) dan Simple Additive Weighting (SAW) dengan alur validasi 5 Milestone.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 1. Persiapan Lingkungan (Prerequisites)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Proyek ini menggunakan database SQLite berbasis file lokal sehingga dapat langsung dijalankan tanpa Docker maupun instalasi server MySQL terpisah. Pastikan perangkat Anda sudah terpasang:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+* PHP >= 8.2 (ekstensi aktif: sqlite3, pdo_sqlite, mbstring, xml, zip, curl, fileinfo)
+* Composer >= 2.6
+* Git
 
-## Learning Laravel
+Rekomendasi paket instalasi cepat:
+* Windows: Laravel Herd (https://herd.laravel.com/windows) atau Laragon (https://laragon.org/download/)
+* macOS: Laravel Herd (https://herd.laravel.com/) atau `brew install php composer git`
+* Linux (Ubuntu/Debian): `sudo apt update && sudo apt install -y php php-cli php-sqlite3 php-mbstring php-xml php-zip php-curl composer git`
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+---
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 2. Prosedur Menjalankan Project dari 0
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+1. Clone repositori dan masuk ke direktori proyek:
+   git clone <URL_REPOSITORI> spk-ahp-saw
+   cd spk-ahp-saw
 
-## Agentic Development
+2. Instal seluruh dependensi PHP:
+   composer install --ignore-platform-req=ext-gd --ignore-platform-req=ext-iconv
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+3. Salin file konfigurasi environment dan generate application key:
+   cp .env.example .env
+   php artisan key:generate
 
-```bash
-composer require laravel/boost --dev
+4. Pastikan koneksi database di file `.env` diatur ke SQLite (hapus atau beri tanda `#` pada konfigurasi `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` jika ada):
+   DB_CONNECTION=sqlite
 
-php artisan boost:install
-```
+5. Buat file database SQLite kosong:
+   * Linux / macOS / Git Bash:
+     touch database/database.sqlite
+   * Windows CMD:
+     type nul > database\database.sqlite
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+6. Jalankan migrasi tabel dan seeder data awal:
+   php artisan migrate:fresh --seed
 
-## Contributing
+7. Jalankan server lokal:
+   php artisan serve
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+8. Buka browser dan akses:
+   http://127.0.0.1:8000
